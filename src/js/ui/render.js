@@ -1,7 +1,8 @@
 import { classes } from '../data/classes.js';
 import { talents } from '../data/talents.js';
 import { skills } from '../data/skills.js';
-import { requirementsMet, hasTalent, hasClassNode, learnTalent, learnClassNode, resetTalents } from '../systems/talents.js';
+import { requirementsMet, hasTalent, hasClassNode, learnTalent, learnClassNode, resetTalents, gainTalentPoint, switchClassWithRefund } from '../systems/talents.js';
+import { saveGame } from '../systems/save.js';
 import { skillDescription, getSkillStats } from '../systems/stats.js';
 
 export function createRenderer(state, combat) {
@@ -20,7 +21,7 @@ export function createRenderer(state, combat) {
     hud.innerHTML = `
       <div class="panel-card stats-card">
         <div class="name">Mago <span>${className}</span></div>
-        <div class="small">Nível ${state.player.level} · Pontos de talento: <b>${state.availableTalentPoints}</b></div>
+        <div class="small">Nível ${state.player.level} · Pontos: <b>${state.availableTalentPoints}</b> / ${state.totalTalentPoints} · <span class="save-status">💾 ${state.saveStatus === 'salvo' ? 'Build salva' : 'Novo save'}</span></div>
         <div class="bar"><i class="hp" style="width:${state.player.hp}%"></i></div>
         <div class="bar"><i class="mp" style="width:${state.player.mp}%"></i></div>
         <div class="bar"><i class="xp" style="width:${state.player.xp}%"></i></div>
@@ -55,9 +56,11 @@ export function createRenderer(state, combat) {
       button.className = `class-button ${state.selectedClass === cls.id ? 'selected' : ''}`;
       button.innerHTML = `<b>${cls.icon} ${cls.name}</b><span>${cls.description}</span>`;
       button.onclick = () => {
+        if (state.selectedClass === cls.id) return;
+        const refund = switchClassWithRefund(state, classes);
         state.selectedClass = cls.id;
-        state.learnedClassNodes.clear();
-        log(`Classe escolhida: ${cls.name}`);
+        saveGame(state);
+        log(refund > 0 ? `Classe alterada para ${cls.name}. ${refund} ponto(s) da árvore anterior foram devolvidos.` : `Classe escolhida: ${cls.name}`);
         renderAll();
       };
       grid.appendChild(button);
@@ -102,7 +105,7 @@ export function createRenderer(state, combat) {
       grid.appendChild(button);
     });
     root.querySelector('#reset-talents').onclick = () => { resetTalents(state); log('Árvores resetadas.'); renderAll(); };
-    root.querySelector('#gain-point').onclick = () => { state.availableTalentPoints += 1; log('+1 ponto de demonstração.'); renderAll(); };
+    root.querySelector('#gain-point').onclick = () => { gainTalentPoint(state); log('+1 ponto salvo no personagem.'); renderAll(); };
   }
 
   function renderSkills() {

@@ -1,6 +1,6 @@
 # ARPG Mago — protótipo modular
 
-A ideia desta versão é não concentrar o jogo em um único `index.html`.
+Protótipo de Action RPG 2D com arquitetura modular para crescer sem concentrar tudo no `index.html`.
 
 ## Estrutura
 
@@ -21,15 +21,35 @@ arpg_mago/
       │  └─ skills.js
       ├─ systems/
       │  ├─ combat.js
+      │  ├─ particles.js
+      │  ├─ save.js
       │  ├─ stats.js
       │  └─ talents.js
       └─ ui/
          └─ render.js
 ```
 
+## Save / progressão
+
+A build é salva automaticamente em `localStorage` com a chave `arpg_mago_save_v2`.
+
+São persistidos:
+- nível e XP
+- classe escolhida
+- talentos gerais aprendidos
+- nós da árvore de classe aprendidos
+- pontos totais de talento
+- pontos disponíveis
+
+Os pontos ganhos ao subir de nível também são salvos. Ao resetar, os pontos gastos voltam para o saldo total. Ao trocar de classe, os pontos gastos na árvore da classe anterior são devolvidos.
+
+## Partículas
+
+O combate usa `src/js/systems/particles.js`, separado da lógica de combate. Há efeitos próprios para ataque, fogo, explosão, raio, vazio, meteorito, dash, execução, sobrecarga e morte de inimigos.
+
 ## Como testar
 
-Abra `index.html` em um navegador moderno. Como o projeto usa ES Modules, um servidor local simples é recomendado:
+Recomendado usar um servidor local:
 
 ```bash
 python -m http.server 8000
@@ -39,4 +59,4 @@ Depois abra `http://localhost:8000`.
 
 ## Próximas extensões
 
-A arquitetura já separa dados e sistemas para podermos adicionar novas classes, habilidades, equipamentos, efeitos, monstros, bosses, mapas, save/load e futuramente migrar a mesma lógica para uma engine.
+A mesma estrutura permite adicionar novas classes, skill trees, equipamentos, efeitos de status, monstros, bosses, mapas, inventário, loot, save em arquivo e posteriormente migrar a lógica para uma engine.
