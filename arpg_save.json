@@ -1,0 +1,43 @@
+{
+  "character": {
+    "name": "Ignis",
+    "class": "Mago",
+    "vocation": "Mestre do Fogo",
+    "level": 12,
+    "experience": 4500
+  },
+  "classTalents": [
+    "m_int_1",
+    "m_fire_damage_1",
+    "voc_pyro_mastery",
+    "voc_fire_pen"
+  ],
+  "skillTalents": {
+    "fireball": [
+      "fb_core",
+      "fb_impact_1",
+      "fb_area_explode",
+      "fb_multishot"
+    ]
+  },
+  "inventory": [
+    {
+      "slot": "weapon",
+      "name": "Cajado das Chamas Anciãs",
+      "type": "staff",
+      "rarity": "rare",
+      "fireDamageBonus": 25
+    },
+    {
+      "slot": "chest",
+      "name": "Manto do Piroamante",
+      "type": "robe",
+      "rarity": "magic",
+      "manaRegenBonus": 10
+    }
+  ],
+  "mapsUnlocked": [
+    "map_tier_1_caves",
+    "map_tier_1_volcano"
+  ]
+}
