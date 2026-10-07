@@ -160,14 +160,17 @@ export class CombatSystem {
     this.state.player.xp += 10;
     if (hasTalent(this.state, 'blood1')) this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + 4);
     if (hasTalent(this.state, 'blood3') && Math.random() < 0.25) this.log('💀 Carnificina: execução em cadeia!');
-    if (this.state.player.xp >= 100) {
+
+    let leveledUp = false;
+    while (this.state.player.xp >= 100) {
       this.state.player.xp -= 100;
       this.state.player.level += 1;
       this.state.totalTalentPoints += 1;
       this.state.availableTalentPoints += 1;
-      saveGame(this.state);
-      this.log(`⬆️ Nível ${this.state.player.level}! +1 ponto de talento salvo.`);
+      leveledUp = true;
+      this.log(`⬆️ Nível ${this.state.player.level}! +1 ponto de talento disponível.`);
     }
+    if (leveledUp) saveGame(this.state);
   }
 
   update(delta) {

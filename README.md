@@ -60,3 +60,7 @@ Depois abra `http://localhost:8000`.
 ## Próximas extensões
 
 A mesma estrutura permite adicionar novas classes, skill trees, equipamentos, efeitos de status, monstros, bosses, mapas, inventário, loot, save em arquivo e posteriormente migrar a lógica para uma engine.
+
+
+## Correção de pontos
+A renderização contínua do combate agora é separada da renderização dos menus. Isso evita recriar botões de talentos/classes a cada frame e permite clicar normalmente para distribuir pontos. Pontos de nível e compras de talentos são salvos automaticamente no localStorage.

@@ -79,9 +79,10 @@ export function createRenderer(state, combat) {
       const available = requirementsMet(state, node.requires ?? []);
       button.className = `node ${hasClassNode(state, node.id) ? 'learned' : (!available ? 'locked' : '')}`;
       button.innerHTML = `<b>${node.name}<span class="cost">${node.cost}pt</span></b><small>${node.description}</small>`;
-      button.onclick = () => {
+      button.onclick = (event) => {
+        event.preventDefault();
         const result = learnClassNode(state, node);
-        log(result.message);
+        log(result.ok ? `✅ ${result.message} · ${state.availableTalentPoints} ponto(s) restante(s).` : `⚠️ ${result.message}`);
         renderAll();
       };
       stack.appendChild(button);
@@ -97,9 +98,10 @@ export function createRenderer(state, combat) {
       const button = document.createElement('button');
       button.className = `node ${hasTalent(state, talent.id) ? 'learned' : (!available ? 'locked' : '')}`;
       button.innerHTML = `<b>${talent.name}<span class="cost">${talent.cost}pt</span></b><small>${talent.description}</small>`;
-      button.onclick = () => {
+      button.onclick = (event) => {
+        event.preventDefault();
         const result = learnTalent(state, talent);
-        log(result.message);
+        log(result.ok ? `✅ ${result.message} · ${state.availableTalentPoints} ponto(s) restante(s).` : `⚠️ ${result.message}`);
         renderAll();
       };
       grid.appendChild(button);
@@ -121,6 +123,7 @@ export function createRenderer(state, combat) {
     });
   }
 
+  function renderFrame() { renderHud(); renderArena(); }
   function renderAll() { renderHud(); renderArena(); renderClasses(); renderTalents(); renderSkills(); }
-  return { renderAll, log };
+  return { renderAll, renderFrame, log };
 }

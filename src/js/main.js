@@ -27,7 +27,7 @@ function frame(now) {
   combat.update(delta);
   particleSystem.update(delta);
   particleSystem.render();
-  renderer.renderAll();
+  renderer.renderFrame();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
