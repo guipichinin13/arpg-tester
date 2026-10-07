@@ -4,10 +4,11 @@ import { saveGame } from './save.js';
 import { skills } from '../data/skills.js';
 
 export class CombatSystem {
-  constructor(state, logger, particles) {
+  constructor(state, logger, particles, projectiles) {
     this.state = state;
     this.log = logger;
     this.particles = particles;
+    this.projectiles = projectiles;
   }
 
   fxBurst(x, y, palette, options) { this.particles?.burst(x, y, palette, options); }
@@ -44,27 +45,45 @@ export class CombatSystem {
   basicAttack() {
     const skill = skills.basic;
     if (!this.canCast(skill)) return;
-    const enemy = this.nearestEnemy(115);
+    const enemy = this.nearestEnemy(300);
     if (!enemy) return;
     this.spend(skill);
-    this.damageEnemy(enemy, getSkillStats(this.state, skill).damage, skill);
-    this.fxBurst(enemy.x, enemy.y, ['#e9e8ff', '#a98cff'], { count: 8, speed: 55, life: 220, size: 2 });
+    const stats = getSkillStats(this.state, skill);
+    this.projectiles?.fire({
+      from: this.state.player,
+      target: enemy,
+      skillId: 'basic',
+      speed: 620,
+      onImpact: target => this.damageEnemy(target, stats.damage, skill),
+    });
   }
 
   castSkill(skillId) {
     const skill = skills[skillId];
     if (!skill || !this.canCast(skill)) return;
     if (skillId === 'dash') return this.dash();
-    const enemy = this.nearestEnemy(300);
+    const enemy = this.nearestEnemy(500);
     if (!enemy) return;
     this.spend(skill);
     const stats = getSkillStats(this.state, skill);
+    const speed = skillId === 'fireball' ? 430 : skillId === 'lightning' ? 760 : skillId === 'void_lance' ? 520 : 520;
+    this.projectiles?.fire({
+      from: this.state.player,
+      target: enemy,
+      skillId,
+      speed,
+      onImpact: target => this.applySkillImpact(target, skill, stats),
+    });
+  }
+
+  applySkillImpact(enemy, skill, stats) {
+    if (!enemy || enemy.hp <= 0) return;
+    const skillId = skill.id;
     this.damageEnemy(enemy, stats.damage, skill);
 
     if (skillId === 'fireball') {
-      this.fxBurst(enemy.x, enemy.y, ['#fff2b0', '#ffb52e', '#ff5d2e'], { count: 24, speed: 115, life: 420, gravity: 35, size: 3.3 });
       if (hasTalent(this.state, 'fire2')) enemy.burning = true;
-      if (hasTalent(this.state, 'fire4')) {
+      if (hasTalent(this.state, 'fire4') && enemy.hp > 0) {
         const radius = hasClassNode(this.state, 'fire_class_3') ? 145 : 95;
         const multiplier = hasClassNode(this.state, 'fire_class_3') ? 0.75 : 0.55;
         this.particles?.ring(enemy.x, enemy.y, '#ff7a32', 30, radius * .5);
@@ -75,27 +94,23 @@ export class CombatSystem {
     }
 
     if (skillId === 'lightning') {
-      this.fxBurst(enemy.x, enemy.y, ['#fff7a8', '#70c8ff', '#a68bff'], { count: 30, speed: 170, life: 360, size: 2.4 });
       this.particles?.ring(enemy.x, enemy.y, '#75cfff', 18, 24);
+      if (this.state.selectedClass === 'thunder' && hasClassNode(this.state, 'thunder_class_1')) {
+        this.state.combat.charge = Math.min(100, this.state.combat.charge + 35);
+        if (this.state.combat.charge >= 100 && hasClassNode(this.state, 'thunder_class_2')) this.overload();
+      }
     }
 
     if (skillId === 'void_lance') {
-      this.fxBurst(enemy.x, enemy.y, ['#f5d5ff', '#ae67ff', '#5319b8'], { count: 32, speed: 135, life: 500, size: 3 });
       if (this.state.selectedClass === 'void' && hasClassNode(this.state, 'void_class_1')) enemy.marked = true;
       if (this.state.selectedClass === 'void' && enemy.hp > 0 && enemy.hp <= enemy.maxHp * 0.2) this.execute(enemy);
     }
 
     if (skillId === 'meteor') {
-      this.fxBurst(enemy.x, enemy.y, ['#fff0b0', '#ff9d2d', '#d93422'], { count: 45, speed: 190, life: 620, gravity: 95, size: 3.8 });
       this.particles?.ring(enemy.x, enemy.y, '#ff6f2e', 36, 35);
       const radius = this.state.selectedClass === 'fire' ? 150 : 105;
       this.state.enemies.filter(other => other !== enemy && other.hp > 0 && Math.hypot(other.x - enemy.x, other.y - enemy.y) < radius)
         .forEach(other => this.damageEnemy(other, stats.damage * .35, skill, true));
-    }
-
-    if (this.state.selectedClass === 'thunder' && skillId === 'lightning' && hasClassNode(this.state, 'thunder_class_1')) {
-      this.state.combat.charge = Math.min(100, this.state.combat.charge + 35);
-      if (this.state.combat.charge >= 100 && hasClassNode(this.state, 'thunder_class_2')) this.overload();
     }
   }
 
