@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARPG Mago</title>
+  <link rel="stylesheet" href="./src/css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <main id="game">
+      <div class="grid"></div>
+      <div id="arena"></div>
+      <div id="hud"></div>
+      <div id="player"></div>
+      <div id="combat-log" class="panel-card"></div>
+      <div id="help" class="panel-card">WASD mover · Espaço atacar · 1/2/3 skills · Shift dash</div>
+    </main>
+
+    <aside id="sidebar">
+      <nav id="tabs" class="tabs">
+        <button class="tab active" data-tab="classes">👑 Classes</button>
+        <button class="tab" data-tab="talents">🌳 Talentos</button>
+        <button class="tab" data-tab="skills">✨ Skills</button>
+      </nav>
+
+      <section id="panel-classes" class="content-panel"></section>
+      <section id="panel-talents" class="content-panel hidden"></section>
+      <section id="panel-skills" class="content-panel hidden"></section>
+    </aside>
+  </div>
+
+  <script type="module" src="./src/js/main.js"></script>
+</body>
+</html>
