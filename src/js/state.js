@@ -18,7 +18,8 @@ export function createGameState() {
     activeTab: 'classes',
     saveStatus: 'novo',
     lastSavedAt: 0,
-    combat: { charge: 0, auraPulseTimer: 0 },
+    combat: { charge: 0, auraPulseTimer: 0, lastPlayerHitAt: 0 },
+    map: { tier: 1 },
   };
   applySavedGame(state, loadGame());
   return state;

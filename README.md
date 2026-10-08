@@ -1,25 +1,24 @@
-# ARPG Mago — v6
+# ARPG Mago — v7
 
-Protótipo modular em HTML/CSS/JavaScript puro, pensado para evoluir por sistemas sem concentrar lógica no `index.html`.
+Base modular do protótipo de Action RPG.
 
-## Progressão
-- O personagem escolhe uma única especialização: Senhor do Fogo, Deus do Trovão ou Void Mage.
-- A cada nível, recebe +1 Ponto de Skill de Mago e, depois de escolher a classe, +1 Ponto de Skill da Especialização.
-- Cada upgrade custa 1 ponto e é salvo em `localStorage`.
+## Combate
+- 2 skills da especialização + 1 Aura.
+- Skills direcionadas pelo cursor.
+- Projéteis reais com rastro, colisão e impacto.
+- Monstros perseguem o jogador e possuem IA de ataque corpo a corpo ou à distância.
+- Dano recebido tem telegraph, partículas, knockback e números de dano.
 
-## Loadout
-- 3 slots de combate: Skill 1, Skill 2 e Aura.
-- Depois de escolher a classe, apenas skills do elemento da especialização ficam disponíveis.
-- As duas skills precisam ser escolhidas pelo jogador.
-- A Aura ocupa o terceiro slot e pode ser trocada entre as opções da especialização.
-- `1` e `2` lançam as skills; `3` ativa/desativa a Aura.
-- Todas as skills seguem o cursor do mouse.
-- Ataque básico continua no `Espaço` e não ocupa os 3 slots.
+## Mapas
+- Primeiro mapa ativo: **T1**.
+- Estrutura preparada para **T1 até T20** em `src/js/data/maps.js`.
+- Vida, dano e velocidade dos monstros escalam por tier sem misturar essa regra com o sistema de combate.
 
-## Árvores
-- Árvore de Mago: dano, mana, crítico, cooldown, projétil, penetração etc.
-- Árvore da Especialização: upgrades das skills e uma seção exclusiva de upgrades da Aura.
-- Nós de Aura podem aumentar potência, raio, pulsos, defesa ou modificar diretamente o comportamento da Aura.
+## Dano e atributos
+- Os atributos da árvore de Mago alimentam diretamente o cálculo final das skills.
+- `Poder Arcano`: +10% Poder Mágico por nível.
+- O HUD mostra o Poder Mágico atual e as skills mostram o dano final calculado.
+- Dano de especialização e Aura são aplicados depois do atributo global, deixando o cálculo previsível.
 
 ## Estrutura
 ```text
@@ -32,10 +31,12 @@ src/
     state.js
     data/
       classes.js
+      maps.js
       skills.js
       talents.js
     systems/
       combat.js
+      floatingText.js
       particles.js
       projectiles.js
       save.js
@@ -43,6 +44,3 @@ src/
       talents.js
     ui/render.js
 ```
-
-## Execução
-Abra com Live Server no VS Code ou sirva a pasta por um servidor local. O projeto usa ES Modules e não exige build step.

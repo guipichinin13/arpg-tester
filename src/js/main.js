@@ -3,14 +3,16 @@ import { CombatSystem } from './systems/combat.js';
 import { ParticleSystem } from './systems/particles.js';
 import { ProjectileSystem } from './systems/projectiles.js';
 import { saveGame } from './systems/save.js';
+import { FloatingTextSystem } from './systems/floatingText.js';
 import { createRenderer } from './ui/render.js';
 import { bindInput } from './input.js';
 
 const state=createGameState();
 const particleSystem=new ParticleSystem(document.getElementById('game'));
 const projectileSystem=new ProjectileSystem(document.getElementById('game'),particleSystem);
+const floatingText=new FloatingTextSystem(document.getElementById('game'));
 const renderer=createRenderer(state);
-const combat=new CombatSystem(state,message=>renderer.log(message),particleSystem,projectileSystem);
+const combat=new CombatSystem(state,message=>renderer.log(message),particleSystem,projectileSystem,floatingText);
 for(let i=0;i<5;i++)combat.spawnEnemy();
 bindInput(state,combat);window.addEventListener('beforeunload',()=>saveGame(state));
 state.logs.unshift(state.lastSavedAt?`💾 Build carregada — 🔮 ${state.mageSkillPoints} Mago · 👑 ${state.selectedClass?state.specSkillPoints:'—'} Especialização.`:'✨ Novo personagem — escolha uma classe, 2 skills e 1 Aura.');

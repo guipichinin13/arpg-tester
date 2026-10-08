@@ -1,5 +1,5 @@
 export const mageSkillTree = [
-  { id: 'mage_power', name: '🔮 Poder Arcano', stat: 'globalDamagePct', perLevel: 0.08, maxLevel: 5, description: '+8% dano de skills por nível.' },
+  { id: 'mage_power', name: '🔮 Poder Arcano', stat: 'globalDamagePct', perLevel: 0.10, maxLevel: 5, description: '+10% Poder Mágico por nível. Amplifica o dano final das skills.' },
   { id: 'mage_speed', name: '💨 Projéteis Rápidos', stat: 'projectileSpeedPct', perLevel: 0.15, maxLevel: 4, description: '+15% velocidade dos projéteis por nível.' },
   { id: 'mage_mana', name: '💧 Reserva de Mana', stat: 'maxManaFlat', perLevel: 12, maxLevel: 5, description: '+12 Mana máxima por nível.' },
   { id: 'mage_regen', name: '♻️ Fluxo de Mana', stat: 'manaRegenPct', perLevel: 0.20, maxLevel: 4, description: '+20% regeneração de Mana por nível.' },
