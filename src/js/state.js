@@ -19,7 +19,8 @@ export function createGameState() {
     saveStatus: 'novo',
     lastSavedAt: 0,
     combat: { charge: 0, auraPulseTimer: 0, lastPlayerHitAt: 0 },
-    map: { tier: 1 },
+    map: { tier: 1, modifiers: [], currencySlots: 0 },
+    wave: { current: 1, status: 'spawning', spawned: 0, defeated: 0, total: 10, spawnTimer: 0, intermissionTimer: 0, elapsed: 0, bossSpawned: false, bossDefeated: false, completed: false },
   };
   applySavedGame(state, loadGame());
   return state;

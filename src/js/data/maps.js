@@ -9,6 +9,9 @@ export const MAP_TIERS = Array.from({ length: 20 }, (_, index) => {
     enemyHpMultiplier: hpMultiplier,
     enemyDamageMultiplier: damageMultiplier,
     enemyMoveMultiplier: moveMultiplier,
+    // Reservado para o futuro sistema de currency/modificadores de mapa.
+    modifiers: [],
+    currencySlots: 0,
   };
 });
 

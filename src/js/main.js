@@ -6,6 +6,7 @@ import { saveGame } from './systems/save.js';
 import { FloatingTextSystem } from './systems/floatingText.js';
 import { createRenderer } from './ui/render.js';
 import { bindInput } from './input.js';
+import { WaveSystem } from './systems/waves.js';
 
 const state=createGameState();
 const particleSystem=new ParticleSystem(document.getElementById('game'));
@@ -13,9 +14,10 @@ const projectileSystem=new ProjectileSystem(document.getElementById('game'),part
 const floatingText=new FloatingTextSystem(document.getElementById('game'));
 const renderer=createRenderer(state);
 const combat=new CombatSystem(state,message=>renderer.log(message),particleSystem,projectileSystem,floatingText);
-for(let i=0;i<5;i++)combat.spawnEnemy();
+const waves=new WaveSystem(state,combat,message=>renderer.log(message));
+combat.waveSystem=waves;
 bindInput(state,combat);window.addEventListener('beforeunload',()=>saveGame(state));
 state.logs.unshift(state.lastSavedAt?`💾 Build carregada — 🔮 ${state.mageSkillPoints} Mago · 👑 ${state.selectedClass?state.specSkillPoints:'—'} Especialização.`:'✨ Novo personagem — escolha uma classe, 2 skills e 1 Aura.');
 renderer.renderAll();
 let last=performance.now();
-function frame(now){const delta=Math.min(50,now-last);last=now;combat.update(delta);projectileSystem.update(delta,state.enemies);particleSystem.update(delta);projectileSystem.render();particleSystem.render();renderer.renderFrame();requestAnimationFrame(frame);}requestAnimationFrame(frame);
+function frame(now){const delta=Math.min(50,now-last);last=now;combat.update(delta);waves.update(delta);projectileSystem.update(delta,state.enemies);particleSystem.update(delta);projectileSystem.render();particleSystem.render();renderer.renderFrame();requestAnimationFrame(frame);}requestAnimationFrame(frame);

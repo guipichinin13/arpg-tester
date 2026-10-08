@@ -4,28 +4,44 @@ import { getSkillStats, getDerivedStats } from './stats.js';
 import { saveGame } from './save.js';
 import { getSpecLevel, gainSkillPoints, toggleAura } from './talents.js';
 import { getMapTier } from '../data/maps.js';
+import { applyAffixesToMonster, buildMonsterName } from '../data/monsterAffixes.js';
 
 export class CombatSystem {
   constructor(state, logger, particles, projectiles, floatingText) { this.state=state;this.log=logger;this.particles=particles;this.projectiles=projectiles;this.floatingText=floatingText; }
   fxBurst(x,y,palette,options){this.particles?.burst(x,y,palette,options);}
-  spawnEnemy(){
+  spawnEnemy(options={}){
     const map=getMapTier(this.state.map.tier);
-    const ranged=Math.random()<0.18;
-    const maxHp=Math.round(80*map.enemyHpMultiplier*(0.90+Math.random()*0.20));
+    const boss=Boolean(options.boss);
+    const ranged=boss?true:Math.random()<0.18;
+    const rarity=options.rarity ?? 'normal';
+    const affixes=options.affixes ?? {prefixes:[],suffixes:[],all:[]};
+    const baseHp=80*(options.waveHpMultiplier??1)*map.enemyHpMultiplier*(0.90+Math.random()*0.20)*(boss?4.6:1);
+    const baseDamage=(ranged?8.5:7.5)*(options.waveDamageMultiplier??1)*map.enemyDamageMultiplier*(0.92+Math.random()*0.16)*(boss?2.0:1);
+    const baseSpeed=(ranged?42:56)*(0.95+Math.random()*0.14)*map.enemyMoveMultiplier*(boss?0.9:1);
+    const baseRange=ranged?250:44;
+    const baseCooldown=ranged?1700:900;
+    const modified=applyAffixesToMonster({hp:baseHp,damage:baseDamage,speed:baseSpeed,attackRange:baseRange,attackCooldown:baseCooldown},affixes);
+    const baseName=boss?'Senhor da Ruína':ranged?'Arauto Arcano':'Devastador';
     const enemy={
-      x:Math.random()*680+70,y:Math.random()*440+90,hp:maxHp,maxHp,
-      type:ranged?'caster':'melee',
+      x:Math.random()*680+70,y:Math.random()*440+90,hp:Math.round(modified.hp),maxHp:Math.round(modified.hp),
+      type:boss?'boss':ranged?'caster':'melee',boss,rarity,affixes,
+      wave:options.wave??this.state.wave?.current??1,
+      name:boss?`👑 ${baseName}`:buildMonsterName(baseName,rarity,affixes),
       burning:false,burnUntil:0,markedUntil:0,frozenUntil:0,stunnedUntil:0,
-      moveSpeed:(ranged?42:56)*(0.95+Math.random()*0.14)*map.enemyMoveMultiplier,
-      attackDamage:(ranged?8.5:7.5)*(0.92+Math.random()*0.16)*map.enemyDamageMultiplier,
-      attackRange:ranged?250:44,
-      attackCooldown:ranged?1700:900,
-      attackTimer:400+Math.random()*700,
+      moveSpeed:modified.speed,
+      attackDamage:modified.damage,
+      attackRange:modified.attackRange,
+      attackCooldown:modified.attackCooldown,
+      attackTimer:(boss?600:400)+Math.random()*700,
       attackWindup:0,
       attackWindupDuration:ranged?380:220,
+      damageTaken:modified.damageTaken,
+      lifesteal:modified.lifesteal,
+      thorns:modified.thorns,
     };
     this.state.enemies.push(enemy);
-    this.fxBurst(enemy.x,enemy.y,ranged?['#8d76ff','#d2c1ff']:['#b9384f','#ff6179'],{count:7,speed:35,life:250,size:2});
+    const palette=boss?['#ffd36a','#ff4d6d','#b47cff']:rarity==='rare'?['#f7d97a','#ff9a2e']:rarity==='magic'?['#6fb6ff','#9a7bff']:ranged?['#8d76ff','#d2c1ff']:['#b9384f','#ff6179'];
+    this.fxBurst(enemy.x,enemy.y,palette,{count:boss?20:rarity==='normal'?7:12,speed:boss?70:35,life:boss?500:250,size:boss?3:2});
   }
   getAimDirection(){
     const p=this.state.player,c=this.state.mouse;let dx=(c.inside?c.x:p.x+1)-p.x,dy=(c.inside?c.y:p.y)-p.y;
@@ -92,9 +108,10 @@ export class CombatSystem {
   }
   addCharge(amount){if(this.state.selectedClass!=='thunder')return;this.state.combat.charge=Math.min(100,this.state.combat.charge+amount);if(this.state.combat.charge>=100)this.overload();}
   damageEnemy(enemy,rawDamage,skill,secondary=false){
-    if(!enemy||enemy.hp<=0)return;let damage=rawDamage;const d=getDerivedStats(this.state);const crit=Math.random()<d.critChance;if(crit)damage*=d.critDamage;
+    if(!enemy||enemy.hp<=0)return;let damage=rawDamage;const d=getDerivedStats(this.state);const crit=Math.random()<d.critChance;if(crit)damage*=d.critDamage;damage*=enemy.damageTaken??1;
     if(enemy.burning&&skill.classId==='fire')damage*=1.05; if(enemy.markedUntil>performance.now())damage*=1.12;
     enemy.hp-=damage;
+    if(enemy.thorns>0){const reflected=Math.max(1,damage*enemy.thorns);this.state.player.hp-=reflected;this.floatingText?.show(this.state.player.x,this.state.player.y-28,`-${Math.round(reflected)}`,'player-hit');}
     this.floatingText?.show(enemy.x,enemy.y-24,`${crit?'💥 ':''}${Math.round(damage)}`,crit?'crit':'damage');
     this.fxBurst(enemy.x,enemy.y,crit?['#fff7b0','#ffe36e']:['#d7b7ff','#7d5cff'],{count:crit?12:6,speed:crit?70:35,life:180,size:crit?3:2});
     if(enemy.hp<=0)this.onKill(enemy);
@@ -138,7 +155,8 @@ export class CombatSystem {
     this.fxBurst(before.x,before.y,['#b98cff','#6c48ff'],{count:25,speed:80,life:350,size:2.8});this.fxBurst(p.x,p.y,['#f0d8ff','#8a5cff'],{count:35,speed:130,life:450,size:3});
   }
   onKill(enemy){
-    this.fxBurst(enemy.x,enemy.y,['#ff5f79','#c93655'],{count:28,speed:150,life:500,size:3});this.state.player.xp+=10;
+    this.fxBurst(enemy.x,enemy.y,enemy.boss?['#ffe28a','#ff5f79','#b47cff']:['#ff5f79','#c93655'],{count:enemy.boss?60:28,speed:enemy.boss?220:150,life:enemy.boss?850:500,size:enemy.boss?4:3});this.state.player.xp+=enemy.boss?50:10;
+    this.waveSystem?.onEnemyKilled(enemy);
     while(this.state.player.xp>=100){this.state.player.xp-=100;this.state.player.level+=1;gainSkillPoints(this.state);this.log(`⬆️ Nível ${this.state.player.level}! +1 Ponto de Mago +1 Ponto de Especialização.`);}
     saveGame(this.state);
   }
@@ -157,8 +175,9 @@ export class CombatSystem {
     const p=this.state.player,d=getDerivedStats(this.state);
     const damage=Math.max(1,enemy.attackDamage*(1-d.damageReduction));
     p.hp-=damage;
+    if(enemy.lifesteal>0) enemy.hp=Math.min(enemy.maxHp,enemy.hp+damage*enemy.lifesteal);
     this.floatingText?.show(p.x,p.y-28,`-${Math.round(damage)}`,'player-hit');
-    if(enemy.type==='caster')this.particles?.beam(enemy.x,enemy.y,p.x,p.y,'#bd7cff',220,4);
+    if(enemy.type==='caster'||enemy.type==='boss')this.particles?.beam(enemy.x,enemy.y,p.x,p.y,'#bd7cff',220,4);
     else {
       this.fxBurst(p.x,p.y,['#ff7385','#ff334f'],{count:18,speed:105,life:300,size:3});
       const len=Math.hypot(enemy.x-p.x,enemy.y-p.y)||1;
@@ -206,6 +225,6 @@ export class CombatSystem {
     }
 
     if(p.hp<=0){p.hp=p.maxHp;p.mp=p.maxMp;this.fxBurst(p.x,p.y,['#ffffff','#8d7bff'],{count:35,speed:130,life:500,size:3});this.log('💀 Você caiu no mapa. O personagem foi restaurado para continuar o teste.');}
-    this.state.enemies=this.state.enemies.filter(e=>e.hp>0);while(this.state.enemies.length<5)this.spawnEnemy();
+    this.state.enemies=this.state.enemies.filter(e=>e.hp>0);
   }
 }

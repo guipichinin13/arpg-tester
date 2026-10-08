@@ -44,3 +44,10 @@ src/
       talents.js
     ui/render.js
 ```
+
+
+## Sistema de Waves / Tiers
+
+O mapa atual é T1 e possui 10 Waves. As Waves 1–2 usam apenas monstros Normais. A partir da Wave 3, monstros Mágicos entram gradualmente; a partir da Wave 5, monstros Raros também aparecem. Mágicos recebem exatamente 1 Prefixo + 1 Sufixo (2 atributos) e Raros recebem 2 Prefixos + 2 Sufixos (4 atributos). A Wave 10 começa com mobs e, após 18 segundos, invoca o Boss.
+
+A escalada T1–T20 continua isolada em `src/js/data/maps.js`. O sistema de Waves está em `src/js/systems/waves.js` e os afixos em `src/js/data/monsterAffixes.js`. `maps.js` já reserva `modifiers` e `currencySlots` para o futuro sistema de currency que poderá alterar mapas.
