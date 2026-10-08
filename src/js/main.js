@@ -1,0 +1,22 @@
+import { createGameState } from './state.js';
+import { CombatSystem } from './systems/combat.js';
+import { ParticleSystem } from './systems/particles.js';
+import { ProjectileSystem } from './systems/projectiles.js';
+import { FloatingTextSystem } from './systems/floatingText.js';
+import { createRenderer } from './ui/render.js';
+import { bindInput } from './input.js';
+import { WaveSystem } from './systems/waves.js';
+
+const state=createGameState();
+const particleSystem=new ParticleSystem(document.getElementById('game'));
+const projectileSystem=new ProjectileSystem(document.getElementById('game'),particleSystem);
+const floatingText=new FloatingTextSystem(document.getElementById('game'));
+const renderer=createRenderer(state);
+const combat=new CombatSystem(state,message=>renderer.log(message),particleSystem,projectileSystem,floatingText);
+const waves=new WaveSystem(state,combat,message=>renderer.log(message));
+combat.waveSystem=waves;
+bindInput(state,combat);
+state.logs.unshift('🧪 BUILD V14 — sessão temporária, sem save. Escolha uma classe, 2 skills e 1 Aura.');
+renderer.renderAll();
+let last=performance.now();
+function frame(now){const delta=Math.min(50,now-last);last=now;combat.update(delta);waves.update(delta);projectileSystem.update(delta,state.enemies);particleSystem.update(delta);projectileSystem.render();particleSystem.render();renderer.renderFrame();requestAnimationFrame(frame);}requestAnimationFrame(frame);
