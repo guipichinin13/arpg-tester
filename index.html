@@ -24,6 +24,8 @@
       <section id="panel-skills" class="content-panel hidden"></section>
     </aside>
   </div>
+  <script>window.addEventListener('error',function(e){var box=document.getElementById('boot-error');if(box){box.hidden=false;box.innerHTML='<b>Erro ao iniciar o protótipo.</b><br><small>'+String(e.error?.message||e.message||'Erro de JavaScript')+'</small><br><button onclick="localStorage.clear();location.reload()">Limpar save e reiniciar</button>'}});window.addEventListener('unhandledrejection',function(e){var box=document.getElementById('boot-error');if(box){box.hidden=false;box.innerHTML='<b>Erro ao iniciar o protótipo.</b><br><small>'+String(e.reason?.message||e.reason||'Promise rejeitada')+'</small><br><button onclick="localStorage.clear();location.reload()">Limpar save e reiniciar</button>'}});</script>
+  <div id="boot-error" hidden style="position:fixed;left:20px;right:20px;top:20px;z-index:99999;padding:16px;background:#3a1118;color:#fff;border:1px solid #ff7085;border-radius:12px;font:14px system-ui;box-shadow:0 12px 40px #0008"></div>
   <script type="module" src="./src/js/main.js"></script>
 </body>
 </html>

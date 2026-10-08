@@ -7,6 +7,7 @@ import { getMapTier } from '../data/maps.js';
 
 export class CombatSystem {
   constructor(state, logger, particles, projectiles, floatingText) { this.state=state;this.log=logger;this.particles=particles;this.projectiles=projectiles;this.floatingText=floatingText; }
+  getBounds(){const game=document.getElementById('game');const r=game?.getBoundingClientRect?.();return{w:Math.max(420,(r?.width||1100)),h:Math.max(420,(r?.height||760)),left:30,right:Math.max(420,(r?.width||1100))-30,top:70,bottom:Math.max(420,(r?.height||760))-40};}
   fxBurst(x,y,palette,options){this.particles?.burst(x,y,palette,options);}
   spawnEnemy(options={}){
     const map=getMapTier(this.state.map.tier);
@@ -14,8 +15,9 @@ export class CombatSystem {
     const rarity=options.rarity??'normal';
     const boss=Boolean(options.isBoss);
     const maxHp=Math.round((boss?260:80)*map.enemyHpMultiplier*(0.90+Math.random()*0.20));
+    const b=this.getBounds();
     const enemy={
-      x:Math.random()*680+70,y:Math.random()*440+90,hp:maxHp,maxHp,
+      x:Math.random()*(b.right-70)+70,y:Math.random()*(b.bottom-95)+90,hp:maxHp,maxHp,
       type:ranged?'caster':'melee',rarity,boss,sourceWave:options.sourceWave??1,rolledAffixes:options.affixes??[],
       burning:false,burnUntil:0,markedUntil:0,frozenUntil:0,stunnedUntil:0,regenPerSecond:0,thorns:0,vampirism:0,lowHpDamage:0,damageReduction:0,embers:false,shockChance:0,
       moveSpeed:(boss?48:(ranged?42:56))*(0.95+Math.random()*0.14)*map.enemyMoveMultiplier*(boss?1.1:1),
@@ -136,7 +138,7 @@ export class CombatSystem {
   }
   dash(){
     const skill=skills.dash;if(!this.canCast(skill))return;this.spend(skill);const p=this.state.player,before={x:p.x,y:p.y},dir=this.getAimDirection();const d=getDerivedStats(this.state);const distance=95*d.moveSpeed;
-    p.x=Math.max(30,Math.min(760,p.x+dir.x*distance));p.y=Math.max(70,Math.min(540,p.y+dir.y*distance));
+    const b=this.getBounds();p.x=Math.max(b.left,Math.min(b.right,p.x+dir.x*distance));p.y=Math.max(b.top,Math.min(b.bottom,p.y+dir.y*distance));
     this.fxBurst(before.x,before.y,['#b98cff','#6c48ff'],{count:25,speed:80,life:350,size:2.8});this.fxBurst(p.x,p.y,['#f0d8ff','#8a5cff'],{count:35,speed:130,life:450,size:3});
   }
   onKill(enemy){
@@ -169,8 +171,9 @@ export class CombatSystem {
     else {
       this.fxBurst(p.x,p.y,['#ff7385','#ff334f'],{count:18,speed:105,life:300,size:3});
       const len=Math.hypot(enemy.x-p.x,enemy.y-p.y)||1;
-      p.x=Math.max(30,Math.min(760,p.x-(enemy.x-p.x)/len*10));
-      p.y=Math.max(70,Math.min(540,p.y-(enemy.y-p.y)/len*10));
+      const b=this.getBounds();
+      p.x=Math.max(b.left,Math.min(b.right,p.x-(enemy.x-p.x)/len*10));
+      p.y=Math.max(b.top,Math.min(b.bottom,p.y-(enemy.y-p.y)/len*10));
     }
     if(performance.now()-this.state.combat.lastPlayerHitAt>600){
       this.state.combat.lastPlayerHitAt=performance.now();
@@ -183,7 +186,7 @@ export class CombatSystem {
   update(delta){
     const p=this.state.player,d=getDerivedStats(this.state),dt=delta/1000,now=performance.now();
     const speed=175*d.moveSpeed;if(this.state.keys.has('w'))p.y-=speed*dt;if(this.state.keys.has('s'))p.y+=speed*dt;if(this.state.keys.has('a'))p.x-=speed*dt;if(this.state.keys.has('d'))p.x+=speed*dt;
-    p.x=Math.max(30,Math.min(760,p.x));p.y=Math.max(70,Math.min(540,p.y));p.maxMp=d.maxMana;p.mp=Math.min(p.maxMp,p.mp+dt*12*d.manaRegen);this.auraPulse(delta);
+    const b=this.getBounds();p.x=Math.max(b.left,Math.min(b.right,p.x));p.y=Math.max(b.top,Math.min(b.bottom,p.y));p.maxMp=d.maxMana;p.mp=Math.min(p.maxMp,p.mp+dt*12*d.manaRegen);this.auraPulse(delta);
 
     for(const enemy of this.state.enemies){
       if(enemy.hp<=0)continue;

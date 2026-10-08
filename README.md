@@ -45,3 +45,7 @@ src/
 - Shift: dash
 - P: abrir/fechar árvore de talentos
 - Mouse: direção das skills
+
+
+## Correção v10
+A inicialização agora é defensiva contra saves antigos/corrompidos, os limites do personagem usam o tamanho real do mapa e existe uma tela de erro caso algum módulo falhe no navegador. Para teste limpo, use o botão 'Limpar save e reiniciar' que aparece em caso de erro.

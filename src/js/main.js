@@ -9,6 +9,7 @@ import { bindInput } from './input.js';
 import { WaveSystem } from './systems/waves.js';
 
 const state=createGameState();
+window.__ARPG_STATE__=state;
 const game=document.getElementById('game');
 const particleSystem=new ParticleSystem(game);
 const projectileSystem=new ProjectileSystem(game,particleSystem);
@@ -22,6 +23,6 @@ window.addEventListener('restart-tier',()=>{waves.restartTier();renderer.renderA
 window.addEventListener('test-tier',e=>{waves.testTier(Number(e.detail)||2);renderer.renderAll();});
 window.addEventListener('beforeunload',()=>saveGame(state));
 state.logs.unshift(state.lastSavedAt?`💾 Build carregada — T${state.map.tier}.`:'✨ Novo personagem — escolha uma classe, 2 skills e 1 Aura.');
-renderer.renderAll();
+try{ renderer.renderAll(); }catch(error){ window.__ARPG_BOOT_ERROR__=error; throw error; }
 let last=performance.now();
-function frame(now){const delta=Math.min(50,now-last);last=now;combat.update(delta);waves.update(delta);projectileSystem.update(delta,state.enemies);particleSystem.update(delta);projectileSystem.render();particleSystem.render();renderer.renderFrame();requestAnimationFrame(frame);}requestAnimationFrame(frame);
+function frame(now){try{const delta=Math.min(50,now-last);last=now;combat.update(delta);waves.update(delta);projectileSystem.update(delta,state.enemies);particleSystem.update(delta);projectileSystem.render();particleSystem.render();renderer.renderFrame();}catch(error){ if(!window.__ARPG_RUNTIME_ERROR__){window.__ARPG_RUNTIME_ERROR__=error; console.error(error);} } requestAnimationFrame(frame);}requestAnimationFrame(frame);
