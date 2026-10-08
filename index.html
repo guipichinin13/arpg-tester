@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ARPG Mago — Classes, Skills & Auras</title>
+  <title>ARPG Mago V14 — Base Estável</title>
   <link rel="stylesheet" href="./src/css/style.css" />
 </head>
 <body>
@@ -11,7 +11,7 @@
     <main id="game">
       <div class="grid"></div><div id="arena"></div><div id="hud"></div><div id="player"></div>
       <div id="combat-log" class="panel-card"></div>
-      <div id="help" class="panel-card">WASD mover · Espaço ataque básico · 1/2 skills · 3 Aura · Shift dash · skills seguem o cursor</div>
+      <div id="help" class="panel-card">WASD mover · Espaço ataque básico · 1/2 skills · 3 Aura · Shift dash · skills seguem o cursor · T1 → T20 · 10 Waves</div>
     </main>
     <aside id="sidebar">
       <nav id="tabs" class="tabs">
@@ -24,8 +24,6 @@
       <section id="panel-skills" class="content-panel hidden"></section>
     </aside>
   </div>
-  <script>window.addEventListener('error',function(e){var box=document.getElementById('boot-error');if(box){box.hidden=false;box.innerHTML='<b>Erro ao iniciar o protótipo.</b><br><small>'+String(e.error?.message||e.message||'Erro de JavaScript')+'</small><br><button onclick="location.reload()">Recarregar protótipo</button>'}});window.addEventListener('unhandledrejection',function(e){var box=document.getElementById('boot-error');if(box){box.hidden=false;box.innerHTML='<b>Erro ao iniciar o protótipo.</b><br><small>'+String(e.reason?.message||e.reason||'Promise rejeitada')+'</small><br><button onclick="location.reload()">Recarregar protótipo</button>'}});</script>
-  <div id="boot-error" hidden style="position:fixed;left:20px;right:20px;top:20px;z-index:99999;padding:16px;background:#3a1118;color:#fff;border:1px solid #ff7085;border-radius:12px;font:14px system-ui;box-shadow:0 12px 40px #0008"></div>
-  <script src="./src/js/app.js?v=13" defer></script>
+  <script type="module" src="./src/js/main.js"></script>
 </body>
 </html>

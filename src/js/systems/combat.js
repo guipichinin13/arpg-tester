@@ -3,31 +3,44 @@ import { skills } from '../data/skills.js';
 import { getSkillStats, getDerivedStats } from './stats.js';
 import { getSpecLevel, gainSkillPoints, toggleAura } from './talents.js';
 import { getMapTier } from '../data/maps.js';
+import { applyAffixesToMonster, buildMonsterName } from '../data/monsterAffixes.js';
 
 export class CombatSystem {
   constructor(state, logger, particles, projectiles, floatingText) { this.state=state;this.log=logger;this.particles=particles;this.projectiles=projectiles;this.floatingText=floatingText; }
-  getBounds(){const game=document.getElementById('game');const r=game?.getBoundingClientRect?.();return{w:Math.max(420,(r?.width||1100)),h:Math.max(420,(r?.height||760)),left:30,right:Math.max(420,(r?.width||1100))-30,top:70,bottom:Math.max(420,(r?.height||760))-40};}
   fxBurst(x,y,palette,options){this.particles?.burst(x,y,palette,options);}
   spawnEnemy(options={}){
     const map=getMapTier(this.state.map.tier);
-    const ranged=Math.random()<0.18;
-    const rarity=options.rarity??'normal';
-    const boss=Boolean(options.isBoss);
-    const maxHp=Math.round((boss?260:80)*map.enemyHpMultiplier*(0.90+Math.random()*0.20));
-    const b=this.getBounds();
+    const boss=Boolean(options.boss);
+    const ranged=boss?true:Math.random()<0.18;
+    const rarity=options.rarity ?? 'normal';
+    const affixes=options.affixes ?? {prefixes:[],suffixes:[],all:[]};
+    const baseHp=80*(options.waveHpMultiplier??1)*map.enemyHpMultiplier*(0.90+Math.random()*0.20)*(boss?4.6:1);
+    const baseDamage=(ranged?8.5:7.5)*(options.waveDamageMultiplier??1)*map.enemyDamageMultiplier*(0.92+Math.random()*0.16)*(boss?2.0:1);
+    const baseSpeed=(ranged?42:56)*(0.95+Math.random()*0.14)*map.enemyMoveMultiplier*(boss?0.9:1);
+    const baseRange=ranged?250:44;
+    const baseCooldown=ranged?1700:900;
+    const modified=applyAffixesToMonster({hp:baseHp,damage:baseDamage,speed:baseSpeed,attackRange:baseRange,attackCooldown:baseCooldown},affixes);
+    const baseName=boss?'Senhor da Ruína':ranged?'Arauto Arcano':'Devastador';
     const enemy={
-      x:Math.random()*(b.right-70)+70,y:Math.random()*(b.bottom-95)+90,hp:maxHp,maxHp,
-      type:ranged?'caster':'melee',rarity,boss,sourceWave:options.sourceWave??1,rolledAffixes:options.affixes??[],
-      burning:false,burnUntil:0,markedUntil:0,frozenUntil:0,stunnedUntil:0,regenPerSecond:0,thorns:0,vampirism:0,lowHpDamage:0,damageReduction:0,embers:false,shockChance:0,
-      moveSpeed:(boss?48:(ranged?42:56))*(0.95+Math.random()*0.14)*map.enemyMoveMultiplier*(boss?1.1:1),
-      attackDamage:(boss?18:(ranged?8.5:7.5))*(0.92+Math.random()*0.16)*map.enemyDamageMultiplier*(boss?1.3:1),
-      attackRange:ranged?250:44,attackCooldown:ranged?1700:900,attackTimer:400+Math.random()*700,attackWindup:0,attackWindupDuration:ranged?380:220,
-      displayName:boss?`Guardião T${this.state.map.tier}`:(rarity==='rare'?'Raro':rarity==='magic'?'Mágico':'Normal'),
+      x:Math.random()*680+70,y:Math.random()*440+90,hp:Math.round(modified.hp),maxHp:Math.round(modified.hp),
+      type:boss?'boss':ranged?'caster':'melee',boss,rarity,affixes,
+      wave:options.wave??this.state.wave?.current??1,
+      name:boss?`👑 ${baseName}`:buildMonsterName(baseName,rarity,affixes),
+      burning:false,burnUntil:0,markedUntil:0,frozenUntil:0,stunnedUntil:0,
+      moveSpeed:modified.speed,
+      attackDamage:modified.damage,
+      attackRange:modified.attackRange,
+      attackCooldown:modified.attackCooldown,
+      attackTimer:(boss?600:400)+Math.random()*700,
+      attackWindup:0,
+      attackWindupDuration:ranged?380:220,
+      damageTaken:modified.damageTaken,
+      lifesteal:modified.lifesteal,
+      thorns:modified.thorns,
     };
     this.state.enemies.push(enemy);
-    const palette=boss?['#ffd47a','#ff6f3d']:rarity==='rare'?['#f1cf65','#b98a1c']:rarity==='magic'?['#8d76ff','#d2c1ff']:ranged?['#8d76ff','#d2c1ff']:['#b9384f','#ff6179'];
-    this.fxBurst(enemy.x,enemy.y,palette,{count:boss?20:7,speed:boss?65:35,life:boss?500:250,size:boss?3:2});
-    return enemy;
+    const palette=boss?['#ffd36a','#ff4d6d','#b47cff']:rarity==='rare'?['#f7d97a','#ff9a2e']:rarity==='magic'?['#6fb6ff','#9a7bff']:ranged?['#8d76ff','#d2c1ff']:['#b9384f','#ff6179'];
+    this.fxBurst(enemy.x,enemy.y,palette,{count:boss?20:rarity==='normal'?7:12,speed:boss?70:35,life:boss?500:250,size:boss?3:2});
   }
   getAimDirection(){
     const p=this.state.player,c=this.state.mouse;let dx=(c.inside?c.x:p.x+1)-p.x,dy=(c.inside?c.y:p.y)-p.y;
@@ -94,10 +107,10 @@ export class CombatSystem {
   }
   addCharge(amount){if(this.state.selectedClass!=='thunder')return;this.state.combat.charge=Math.min(100,this.state.combat.charge+amount);if(this.state.combat.charge>=100)this.overload();}
   damageEnemy(enemy,rawDamage,skill,secondary=false){
-    if(!enemy||enemy.hp<=0)return;let damage=rawDamage;const d=getDerivedStats(this.state);const crit=Math.random()<d.critChance;if(crit)damage*=d.critDamage;
+    if(!enemy||enemy.hp<=0)return;let damage=rawDamage;const d=getDerivedStats(this.state);const crit=Math.random()<d.critChance;if(crit)damage*=d.critDamage;damage*=enemy.damageTaken??1;
     if(enemy.burning&&skill.classId==='fire')damage*=1.05; if(enemy.markedUntil>performance.now())damage*=1.12;
-    damage*=Math.max(0.1,1-(enemy.damageReduction||0));
     enemy.hp-=damage;
+    if(enemy.thorns>0){const reflected=Math.max(1,damage*enemy.thorns);this.state.player.hp-=reflected;this.floatingText?.show(this.state.player.x,this.state.player.y-28,`-${Math.round(reflected)}`,'player-hit');}
     this.floatingText?.show(enemy.x,enemy.y-24,`${crit?'💥 ':''}${Math.round(damage)}`,crit?'crit':'damage');
     this.fxBurst(enemy.x,enemy.y,crit?['#fff7b0','#ffe36e']:['#d7b7ff','#7d5cff'],{count:crit?12:6,speed:crit?70:35,life:180,size:crit?3:2});
     if(enemy.hp<=0)this.onKill(enemy);
@@ -137,11 +150,12 @@ export class CombatSystem {
   }
   dash(){
     const skill=skills.dash;if(!this.canCast(skill))return;this.spend(skill);const p=this.state.player,before={x:p.x,y:p.y},dir=this.getAimDirection();const d=getDerivedStats(this.state);const distance=95*d.moveSpeed;
-    const b=this.getBounds();p.x=Math.max(b.left,Math.min(b.right,p.x+dir.x*distance));p.y=Math.max(b.top,Math.min(b.bottom,p.y+dir.y*distance));
+    p.x=Math.max(30,Math.min(760,p.x+dir.x*distance));p.y=Math.max(70,Math.min(540,p.y+dir.y*distance));
     this.fxBurst(before.x,before.y,['#b98cff','#6c48ff'],{count:25,speed:80,life:350,size:2.8});this.fxBurst(p.x,p.y,['#f0d8ff','#8a5cff'],{count:35,speed:130,life:450,size:3});
   }
   onKill(enemy){
-    this.fxBurst(enemy.x,enemy.y,['#ff5f79','#c93655'],{count:28,speed:150,life:500,size:3});this.state.player.xp+=10;
+    this.fxBurst(enemy.x,enemy.y,enemy.boss?['#ffe28a','#ff5f79','#b47cff']:['#ff5f79','#c93655'],{count:enemy.boss?60:28,speed:enemy.boss?220:150,life:enemy.boss?850:500,size:enemy.boss?4:3});this.state.player.xp+=enemy.boss?50:10;
+    this.waveSystem?.onEnemyKilled(enemy);
     while(this.state.player.xp>=100){this.state.player.xp-=100;this.state.player.level+=1;gainSkillPoints(this.state);this.log(`⬆️ Nível ${this.state.player.level}! +1 Ponto de Mago +1 Ponto de Especialização.`);}
   }
   enemyAttack(enemy, dist, dx, dy){
@@ -157,39 +171,32 @@ export class CombatSystem {
 
   resolveEnemyHit(enemy){
     const p=this.state.player,d=getDerivedStats(this.state);
-    let raw=enemy.attackDamage;
-    if(enemy.lowHpDamage && enemy.hp<enemy.maxHp*0.35) raw*=1+enemy.lowHpDamage;
-    const damage=Math.max(1,raw*(1-d.damageReduction));
+    const damage=Math.max(1,enemy.attackDamage*(1-d.damageReduction));
     p.hp-=damage;
+    if(enemy.lifesteal>0) enemy.hp=Math.min(enemy.maxHp,enemy.hp+damage*enemy.lifesteal);
     this.floatingText?.show(p.x,p.y-28,`-${Math.round(damage)}`,'player-hit');
-    if(enemy.type==='caster')this.particles?.beam(enemy.x,enemy.y,p.x,p.y,'#bd7cff',220,4);
-    if(enemy.vampirism) enemy.hp=Math.min(enemy.maxHp,enemy.hp+damage*enemy.vampirism);
-    if(enemy.embers){p.hp=Math.max(0,p.hp-2);this.floatingText?.show(p.x,p.y-45,'BRASA','player-hit');}
-    if(enemy.shockChance&&Math.random()<enemy.shockChance)this.state.player.hitStunUntil=performance.now()+250;
+    if(enemy.type==='caster'||enemy.type==='boss')this.particles?.beam(enemy.x,enemy.y,p.x,p.y,'#bd7cff',220,4);
     else {
       this.fxBurst(p.x,p.y,['#ff7385','#ff334f'],{count:18,speed:105,life:300,size:3});
       const len=Math.hypot(enemy.x-p.x,enemy.y-p.y)||1;
-      const b=this.getBounds();
-      p.x=Math.max(b.left,Math.min(b.right,p.x-(enemy.x-p.x)/len*10));
-      p.y=Math.max(b.top,Math.min(b.bottom,p.y-(enemy.y-p.y)/len*10));
+      p.x=Math.max(30,Math.min(760,p.x-(enemy.x-p.x)/len*10));
+      p.y=Math.max(70,Math.min(540,p.y-(enemy.y-p.y)/len*10));
     }
     if(performance.now()-this.state.combat.lastPlayerHitAt>600){
       this.state.combat.lastPlayerHitAt=performance.now();
       this.log(`🩸 Você sofreu ${Math.round(damage)} de dano.`);
     }
     enemy.attackTimer=enemy.attackCooldown;
-    if(enemy.thorns){const reflect=Math.max(1,enemy.thorns*damage);p.hp=Math.max(0,p.hp-reflect);this.floatingText?.show(p.x,p.y-55,`-espinhos ${Math.round(reflect)}`,'player-hit');}
   }
 
   update(delta){
     const p=this.state.player,d=getDerivedStats(this.state),dt=delta/1000,now=performance.now();
     const speed=175*d.moveSpeed;if(this.state.keys.has('w'))p.y-=speed*dt;if(this.state.keys.has('s'))p.y+=speed*dt;if(this.state.keys.has('a'))p.x-=speed*dt;if(this.state.keys.has('d'))p.x+=speed*dt;
-    const b=this.getBounds();p.x=Math.max(b.left,Math.min(b.right,p.x));p.y=Math.max(b.top,Math.min(b.bottom,p.y));p.maxMp=d.maxMana;p.mp=Math.min(p.maxMp,p.mp+dt*12*d.manaRegen);this.auraPulse(delta);
+    p.x=Math.max(30,Math.min(760,p.x));p.y=Math.max(70,Math.min(540,p.y));p.maxMp=d.maxMana;p.mp=Math.min(p.maxMp,p.mp+dt*12*d.manaRegen);this.auraPulse(delta);
 
     for(const enemy of this.state.enemies){
       if(enemy.hp<=0)continue;
       if(enemy.burning&&now>enemy.burnUntil)enemy.burning=false;
-      if(enemy.regenPerSecond>0)enemy.hp=Math.min(enemy.maxHp,enemy.hp+enemy.regenPerSecond*dt);
       if(enemy.markedUntil&&now>enemy.markedUntil)enemy.markedUntil=0;
       enemy.attackTimer=Math.max(0,enemy.attackTimer-delta);
       const dx=p.x-enemy.x,dy=p.y-enemy.y,dist=Math.hypot(dx,dy)||1;

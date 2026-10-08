@@ -8,19 +8,15 @@ import { bindInput } from './input.js';
 import { WaveSystem } from './systems/waves.js';
 
 const state=createGameState();
-window.__ARPG_STATE__=state;
-const game=document.getElementById('game');
-const particleSystem=new ParticleSystem(game);
-const projectileSystem=new ProjectileSystem(game,particleSystem);
-const floatingText=new FloatingTextSystem(game);
+const particleSystem=new ParticleSystem(document.getElementById('game'));
+const projectileSystem=new ProjectileSystem(document.getElementById('game'),particleSystem);
+const floatingText=new FloatingTextSystem(document.getElementById('game'));
 const renderer=createRenderer(state);
 const combat=new CombatSystem(state,message=>renderer.log(message),particleSystem,projectileSystem,floatingText);
 const waves=new WaveSystem(state,combat,message=>renderer.log(message));
 combat.waveSystem=waves;
-bindInput(state,combat,renderer,waves);
-window.addEventListener('restart-tier',()=>{waves.restartTier();renderer.renderAll();});
-window.addEventListener('test-tier',e=>{waves.testTier(Number(e.detail)||2);renderer.renderAll();});
-state.logs.unshift('✨ Protótipo iniciado — escolha uma classe, 2 skills e 1 Aura.');
-try{ renderer.renderAll(); }catch(error){ window.__ARPG_BOOT_ERROR__=error; throw error; }
+bindInput(state,combat);
+state.logs.unshift('🧪 BUILD V14 — sessão temporária, sem save. Escolha uma classe, 2 skills e 1 Aura.');
+renderer.renderAll();
 let last=performance.now();
-function frame(now){try{const delta=Math.min(50,now-last);last=now;combat.update(delta);waves.update(delta);projectileSystem.update(delta,state.enemies);particleSystem.update(delta);projectileSystem.render();particleSystem.render();renderer.renderFrame();}catch(error){ if(!window.__ARPG_RUNTIME_ERROR__){window.__ARPG_RUNTIME_ERROR__=error; console.error(error);} } requestAnimationFrame(frame);}requestAnimationFrame(frame);
+function frame(now){const delta=Math.min(50,now-last);last=now;combat.update(delta);waves.update(delta);projectileSystem.update(delta,state.enemies);particleSystem.update(delta);projectileSystem.render();particleSystem.render();renderer.renderFrame();requestAnimationFrame(frame);}requestAnimationFrame(frame);

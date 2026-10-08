@@ -1,29 +1,80 @@
-export const prefixes = [
-  {id:'brutal',name:'Brutal',desc:'+30% dano',apply:e=>{e.attackDamage*=1.30;}},
-  {id:'fortified',name:'Fortificado',desc:'+45% vida',apply:e=>{e.maxHp*=1.45;e.hp=e.maxHp;}},
-  {id:'swift',name:'Veloz',desc:'+28% velocidade',apply:e=>{e.moveSpeed*=1.28;e.attackCooldown*=0.88;}},
-  {id:'arcane',name:'Arcano',desc:'+35% alcance',apply:e=>{e.attackRange*=1.35;}},
-  {id:'frenzied',name:'Frenético',desc:'+25% velocidade de ataque',apply:e=>{e.attackCooldown*=0.75;}},
-  {id:'regenerating',name:'Regenerador',desc:'regenera vida lentamente',apply:e=>{e.regenPerSecond=(e.maxHp*0.018);}},
+export const MONSTER_PREFIXES = [
+  { id: 'brutal', name: 'Brutal', description: '+28% dano de ataque.', stats: { damage: 1.28 } },
+  { id: 'hardened', name: 'Endurecido', description: '+45% vida máxima.', stats: { hp: 1.45 } },
+  { id: 'swift', name: 'Veloz', description: '+30% velocidade de movimento.', stats: { speed: 1.30 } },
+  { id: 'arcane', name: 'Arcano', description: '+15% dano e +20% alcance de ataque.', stats: { damage: 1.15, range: 1.20 } },
+  { id: 'vampiric', name: 'Vampírico', description: 'Recupera 12% do dano causado.', stats: { lifesteal: 0.12 } },
+  { id: 'fortified', name: 'Fortificado', description: 'Recebe 12% menos dano.', stats: { damageTaken: 0.88 } },
 ];
-export const suffixes = [
-  {id:'of_thorns',name:'dos Espinhos',desc:'reflete 12% do dano',apply:e=>{e.thorns=0.12;}},
-  {id:'of_vampirism',name:'Vampírico',desc:'cura 8% do dano',apply:e=>{e.vampirism=0.08;}},
-  {id:'of_hunger',name:'da Fome',desc:'+18% dano quando perto da morte',apply:e=>{e.lowHpDamage=0.18;}},
-  {id:'of_barriers',name:'das Barreiras',desc:'reduz dano recebido em 15%',apply:e=>{e.damageReduction=0.15;}},
-  {id:'of_embers',name:'das Brasas',desc:'pode aplicar queimadura no ataque',apply:e=>{e.embers=true;}},
-  {id:'of_shock',name:'do Choque',desc:'ataques podem atordoar',apply:e=>{e.shockChance=0.18;}},
+
+export const MONSTER_SUFFIXES = [
+  { id: 'fury', name: 'da Fúria', description: '+22% velocidade de ataque.', stats: { attackSpeed: 1.22 } },
+  { id: 'resistance', name: 'da Resistência', description: 'Recebe 12% menos dano.', stats: { damageTaken: 0.88 } },
+  { id: 'thorns', name: 'dos Espinhos', description: 'Reflete 10% do dano recebido.', stats: { thorns: 0.10 } },
+  { id: 'hunt', name: 'da Caçada', description: '+12% movimento e +8% dano.', stats: { speed: 1.12, damage: 1.08 } },
+  { id: 'colossus', name: 'do Colosso', description: '+25% vida e -10% velocidade.', stats: { hp: 1.25, speed: 0.90 } },
+  { id: 'chaos', name: 'do Caos', description: '+18% dano e +10% alcance.', stats: { damage: 1.18, range: 1.10 } },
 ];
-function pickDifferent(list,count){
-  const pool=[...list],out=[];while(out.length<count&&pool.length){const i=Math.floor(Math.random()*pool.length);out.push(pool.splice(i,1)[0]);}return out;
+
+function pickUnique(list, used) {
+  const available = list.filter(item => !used.has(item.id));
+  return available[Math.floor(Math.random() * available.length)];
 }
-export function rollAffixes(rarity){
-  if(rarity==='normal') return [];
-  if(rarity==='magic') return [...pickDifferent(prefixes,1),...pickDifferent(suffixes,1)];
-  return [...pickDifferent(prefixes,2),...pickDifferent(suffixes,2)];
+
+export function rollMonsterAffixes(rarity) {
+  if (rarity === 'normal') return { prefixes: [], suffixes: [], all: [] };
+
+  const prefixCount = rarity === 'rare' ? 2 : 1;
+  const suffixCount = rarity === 'rare' ? 2 : 1;
+  const usedPrefixes = new Set();
+  const usedSuffixes = new Set();
+  const prefixes = [];
+  const suffixes = [];
+
+  for (let i = 0; i < prefixCount; i += 1) {
+    const item = pickUnique(MONSTER_PREFIXES, usedPrefixes);
+    usedPrefixes.add(item.id);
+    prefixes.push(item);
+  }
+  for (let i = 0; i < suffixCount; i += 1) {
+    const item = pickUnique(MONSTER_SUFFIXES, usedSuffixes);
+    usedSuffixes.add(item.id);
+    suffixes.push(item);
+  }
+
+  return { prefixes, suffixes, all: [...prefixes, ...suffixes] };
 }
-export function applyAffixes(enemy, affixes){
-  enemy.affixIds=[];enemy.prefixes=[];enemy.suffixes=[];
-  for(const a of affixes){a.apply(enemy);enemy.affixIds.push(a.id);if(prefixes.some(p=>p.id===a.id))enemy.prefixes.push(a.name);else enemy.suffixes.push(a.name);}
-  enemy.displayName=[...enemy.prefixes,...enemy.suffixes].join(' ');
+
+export function applyAffixesToMonster(base, affixes) {
+  const result = {
+    hp: base.hp,
+    damage: base.damage,
+    speed: base.speed,
+    attackRange: base.attackRange,
+    attackCooldown: base.attackCooldown,
+    damageTaken: 1,
+    lifesteal: 0,
+    thorns: 0,
+  };
+
+  for (const affix of affixes.all ?? []) {
+    const stats = affix.stats ?? {};
+    result.hp *= stats.hp ?? 1;
+    result.damage *= stats.damage ?? 1;
+    result.speed *= stats.speed ?? 1;
+    result.attackRange *= stats.range ?? 1;
+    result.attackCooldown /= stats.attackSpeed ?? 1;
+    result.damageTaken *= stats.damageTaken ?? 1;
+    result.lifesteal += stats.lifesteal ?? 0;
+    result.thorns += stats.thorns ?? 0;
+  }
+
+  return result;
+}
+
+export function buildMonsterName(baseName, rarity, affixes) {
+  if (rarity === 'normal') return baseName;
+  const prefixes = affixes.prefixes.map(item => item.name).join(' ');
+  const suffixes = affixes.suffixes.map(item => item.name).join(' ');
+  return `${prefixes} ${baseName} ${suffixes}`.trim();
 }

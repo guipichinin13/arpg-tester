@@ -1,19 +1,11 @@
 import { classes } from '../data/classes.js';
-import { mageSkillTree } from '../data/talents.js';
 
 export function getMageLevel(state, id) { return state.mageUpgrades[id] ?? 0; }
 export function getSpecLevel(state, id) { return state.specUpgrades[id] ?? 0; }
 export function countUpgrades(map) { return Object.values(map).reduce((sum, value) => sum + value, 0); }
 
-export function hasMagePrereqs(state,node) { return (node.requires??[]).every(id => id === 'core' || getMageLevel(state,id) > 0 || (mageSkillTree.find(n=>n.id===id)?.core===true)); }
-
-export function getMissingMagePrereqs(state,node) { return (node.requires??[]).filter(id => id !== 'core' && getMageLevel(state,id) <= 0).map(id => mageSkillTree.find(n=>n.id===id)?.name ?? id); }
-
 export function buyMageUpgrade(state, node) {
   const current = getMageLevel(state, node.id);
-  if (node.core || node.cost === 0) return { ok:false, message:'Esse é o núcleo da árvore.' };
-  const missing = getMissingMagePrereqs(state,node);
-  if (missing.length) return { ok:false, message:`Caminho bloqueado. Primeiro aprenda: ${missing.join(', ')}` };
   if (current >= node.maxLevel) return { ok: false, message: 'Esse upgrade já está no nível máximo.' };
   if (state.mageSkillPoints < 1) return { ok: false, message: 'Sem pontos de skill de Mago.' };
   state.mageSkillPoints -= 1;

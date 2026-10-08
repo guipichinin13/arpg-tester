@@ -17,24 +17,24 @@ export function getDerivedStats(state) {
   const auraDamageReduction = (aura?.damageReduction ?? 0) + getSpecLevel(state, `${state.selectedClass}_aura_guard`) * 0.05;
 
   // Atributos do Mago: todos os cálculos de dano passam por estes multiplicadores.
-  const spellPower = 1 + getMageLevel(state, 'mage_power') * 0.10 + getMageLevel(state, 'arcane_core') * 0.10 + getMageLevel(state,'elemental_affinity') * 0.08 + getMageLevel(state,'spell_amplifier') * 0.12 + getMageLevel(state,'elemental_apex') * 0.15 + getMageLevel(state,'left_bridge') * 0.10 + getMageLevel(state,'crossroads') * 0.12 + getMageLevel(state,'grand_arcana') * 0.18;
-  const basicPower = 1 + getMageLevel(state, 'mage_basic') * 0.15 + getMageLevel(state,'basic_mastery') * 0.15;
-  const critChance = Math.min(0.85, getMageLevel(state, 'mage_crit') * 0.05 + getMageLevel(state,'arcane_insight')*0.04 + getMageLevel(state,'precision')*0.05 + getMageLevel(state,'right_bridge')*0.04 + getMageLevel(state,'arcane_predator')*0.06);
-  const critDamage = 1.5 + getMageLevel(state, 'mage_critDamage') * 0.25 + getMageLevel(state,'overkill')*0.25 + getMageLevel(state,'rupture')*0.30;
+  const spellPower = 1 + getMageLevel(state, 'mage_power') * 0.10;
+  const basicPower = 1 + getMageLevel(state, 'mage_basic') * 0.15;
+  const critChance = Math.min(0.75, getMageLevel(state, 'mage_crit') * 0.05);
+  const critDamage = 1.5 + getMageLevel(state, 'mage_critDamage') * 0.25;
 
   const stats = {
     spellPower,
     globalDamage: spellPower,
     basicPower,
     basicDamage: basicPower,
-    projectileSpeed: 1 + getMageLevel(state, 'mage_speed') * 0.15 + getMageLevel(state,'projectile_mastery')*0.12,
-    maxMana: 100 + getMageLevel(state, 'mage_mana') * 12 + getMageLevel(state,'mana_reserve')*15,
-    manaRegen: 1 + getMageLevel(state, 'mage_regen') * 0.20 + getMageLevel(state,'mana_flow')*0.18,
-    cooldown: Math.max(0.40, 1 - getMageLevel(state, 'mage_cooldown') * 0.05 - getMageLevel(state,'arcane_focus')*0.05 - getMageLevel(state,'arcane_echo')*0.04),
+    projectileSpeed: 1 + getMageLevel(state, 'mage_speed') * 0.15,
+    maxMana: 100 + getMageLevel(state, 'mage_mana') * 12,
+    manaRegen: 1 + getMageLevel(state, 'mage_regen') * 0.20,
+    cooldown: Math.max(0.50, 1 - getMageLevel(state, 'mage_cooldown') * 0.05),
     critChance,
     critDamage,
-    area: 1 + getMageLevel(state, 'mage_area') * 0.10 + getMageLevel(state,'area_mastery')*0.10,
-    projectilePierce: getMageLevel(state, 'mage_pierce') + getMageLevel(state,'piercing_arcane') + getMageLevel(state,'pierce_route'),
+    area: 1 + getMageLevel(state, 'mage_area') * 0.10,
+    projectilePierce: getMageLevel(state, 'mage_pierce'),
     fireDamage: 1,
     lightningDamage: 1,
     voidDamage: 1,
