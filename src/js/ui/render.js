@@ -1,136 +1,45 @@
-import { classes } from '../data/classes.js';
-import { mageSkillTree, skills } from '../data/talents.js';
-import { buyMageUpgrade, buySpecUpgrade, getMageLevel, getSpecLevel, selectSpecialization, resetMageUpgrades, resetSpecUpgrades } from '../systems/talents.js';
+import { classes, auras } from '../data/classes.js';
+import { mageSkillTree } from '../data/talents.js';
+import { skills } from '../data/skills.js';
+import { buyMageUpgrade, buySpecUpgrade, countUpgrades, getMageLevel, getSpecLevel, selectSpecialization, resetMageUpgrades, resetSpecUpgrades, setSkillSlot, clearSkillSlot, selectAura } from '../systems/talents.js';
 import { getDerivedStats, getSkillStats, skillDescription } from '../systems/stats.js';
 import { saveGame } from '../systems/save.js';
 
 export function createRenderer(state) {
-  function log(message) {
-    state.logs.unshift(message);
-    state.logs = state.logs.slice(0, 7);
+  function log(message){state.logs.unshift(message);state.logs=state.logs.slice(0,7);}
+  function renderHud(){
+    const hud=document.getElementById('hud');const spec=state.selectedClass?`${classes[state.selectedClass].icon} ${classes[state.selectedClass].name}`:'Nenhuma';
+    const slotCards=[0,1,2].map(i=>{
+      const label=i===2?'Aura':`Skill ${i+1}`;const id=i<2?state.loadout.skills[i]:state.loadout.aura;const obj=id?(i<2?skills[id]:auras[id]):null;const cd=i<2&&id?Math.max(0,(state.cooldowns[id]??0)-performance.now()):0;return `<div class="hud-slot ${i===2&&state.auraActive?'aura-on':''}"><b>${i+1}</b><span>${obj?obj.name:'Vazio'}</span><small>${cd>0?Math.ceil(cd/100)+'%':''}${i===2&&obj?(state.auraActive?'ATIVA':'OFF'):''}</small></div>`;
+    }).join('');
+    hud.innerHTML=`<div class="panel-card stats-card"><div class="name">Mago <span>${spec}</span></div><div class="point-row"><span>⭐ Nível ${state.player.level}</span><span class="point mage-point">🔮 Mago <b>${state.mageSkillPoints}</b></span><span class="point spec-point">👑 Spec <b>${state.selectedClass?state.specSkillPoints:'—'}</b></span></div><div class="small">XP ${Math.round(state.player.xp)} / 100 · <span class="save-status">💾 ${state.saveStatus==='salvo'?'Salvo':'Novo'}</span></div><div class="bar"><i class="hp" style="width:${state.player.hp/state.player.maxHp*100}%"></i></div><div class="bar"><i class="mp" style="width:${state.player.mp/state.player.maxMp*100}%"></i></div><div class="bar"><i class="xp" style="width:${state.player.xp}%"></i></div>${state.selectedClass==='thunder'?`<div class="small charge">⚡ Carga: ${Math.round(state.combat.charge)}%</div>`:''}<div class="hud-slots">${slotCards}</div></div>`;
   }
-
-  function renderHud() {
-    const hud = document.getElementById('hud');
-    const spec = state.selectedClass ? `${classes[state.selectedClass].icon} ${classes[state.selectedClass].name}` : 'Nenhuma';
-    hud.innerHTML = `
-      <div class="panel-card stats-card">
-        <div class="name">Mago <span>${spec}</span></div>
-        <div class="point-row">
-          <span>⭐ Nível ${state.player.level}</span>
-          <span class="point mage-point">🔮 Mago <b>${state.mageSkillPoints}</b></span>
-          <span class="point spec-point">👑 Spec <b>${state.specSkillPoints}</b></span>
-        </div>
-        <div class="small">XP ${Math.round(state.player.xp)} / 100 · 💾 ${state.saveStatus === 'salvo' ? 'Salvo' : 'Novo'}</div>
-        <div class="bar"><i class="hp" style="width:${state.player.hp / state.player.maxHp * 100}%"></i></div>
-        <div class="bar"><i class="mp" style="width:${state.player.mp / state.player.maxMp * 100}%"></i></div>
-        <div class="bar"><i class="xp" style="width:${state.player.xp}%"></i></div>
-        ${state.selectedClass === 'thunder' ? `<div class="small charge">⚡ Carga: ${Math.round(state.combat.charge)}%</div>` : ''}
-      </div>`;
+  function renderAim(){let aim=document.getElementById('aim-reticle');if(!aim){aim=document.createElement('div');aim.id='aim-reticle';document.getElementById('game').appendChild(aim);}aim.style.left=`${state.mouse.x}px`;aim.style.top=`${state.mouse.y}px`;aim.style.opacity=state.mouse.inside?'1':'.25';}
+  function renderAura(){
+    let ring=document.getElementById('aura-ring');if(!ring){ring=document.createElement('div');ring.id='aura-ring';document.getElementById('game').appendChild(ring);}
+    const d=getDerivedStats(state);const aura=state.loadout.aura?auras[state.loadout.aura]:null;if(!aura||!state.auraActive){ring.style.display='none';return;}
+    ring.style.display='block';ring.style.left=`${state.player.x}px`;ring.style.top=`${state.player.y}px`;ring.style.width=`${d.auraRadius*2}px`;ring.style.height=`${d.auraRadius*2}px`;ring.style.borderColor=aura.color;ring.style.boxShadow=`0 0 24px ${aura.color}44,inset 0 0 22px ${aura.color}16`;
   }
-
-  function renderAim() {
-    let aim = document.getElementById('aim-reticle');
-    if (!aim) {
-      aim = document.createElement('div');
-      aim.id = 'aim-reticle';
-      document.getElementById('game').appendChild(aim);
-    }
-    aim.style.left = `${state.mouse.x}px`;
-    aim.style.top = `${state.mouse.y}px`;
-    aim.style.opacity = state.mouse.inside ? '1' : '.25';
+  function renderArena(){const arena=document.getElementById('arena');arena.innerHTML='';state.enemies.forEach(e=>{const el=document.createElement('div');el.className=`enemy ${e.burning?'burning':''} ${e.markedUntil>performance.now()?'marked':''} ${e.stunnedUntil>performance.now()?'stunned':''}`;el.style.left=`${e.x}px`;el.style.top=`${e.y}px`;el.innerHTML=`<div class="enemy-hp"><i style="width:${Math.max(0,e.hp/e.maxHp*100)}%"></i></div>`;arena.appendChild(el);});const p=document.getElementById('player');p.style.left=`${state.player.x}px`;p.style.top=`${state.player.y}px`;document.getElementById('combat-log').innerHTML=state.logs.join('<br>');renderAim();renderAura();}
+  function nodeButton(node,type){const current=type==='mage'?getMageLevel(state,node.id):getSpecLevel(state,node.id);const maxed=current>=node.maxLevel;const b=document.createElement('button');b.className=`node ${current?'learned':''} ${maxed?'maxed':''}`;b.innerHTML=`<div class="node-title"><b>${node.name}</b><span>${current}/${node.maxLevel}</span></div><small>${node.description}</small><div class="node-cost">${maxed?'MAX':'▲ 1 ponto'}</div>`;b.onclick=event=>{event.preventDefault();const r=type==='mage'?buyMageUpgrade(state,node):buySpecUpgrade(state,node);log(r.ok?`✅ ${r.message}`:`⚠️ ${r.message}`);renderAll();};return b;}
+  function renderClasses(){
+    const root=document.getElementById('panel-classes');root.innerHTML=`<h2>👑 Especialização</h2><div class="sub">Você escolhe <b>uma única especialização</b>. Ao upar, recebe +1 Ponto de Mago e +1 Ponto de Especialização.</div><div id="class-grid" class="class-grid"></div><div id="spec-tree"></div>`;
+    const grid=root.querySelector('#class-grid');Object.values(classes).forEach(cls=>{const b=document.createElement('button');const chosen=state.selectedClass===cls.id,locked=Boolean(state.selectedClass)&&!chosen;b.className=`class-button ${chosen?'selected':''} ${locked?'locked-class':''}`;b.disabled=locked;b.innerHTML=`<b>${cls.icon} ${cls.name}</b><span>${cls.description}</span><em>${chosen?'✓ Especialização ativa':locked?'🔒 Indisponível':'Escolher'}</em>`;b.onclick=()=>{const r=selectSpecialization(state,cls.id);log(r.ok?`👑 ${cls.name} escolhida. Agora selecione 2 skills e 1 Aura.`:`⚠️ ${r.message}`);renderAll();};grid.appendChild(b);});
+    const tree=root.querySelector('#spec-tree');if(!state.selectedClass){tree.innerHTML='<div class="branch empty-branch">Escolha uma especialização para liberar os upgrades de skills e Aura.</div>';return;}
+    const cls=classes[state.selectedClass];tree.innerHTML=`<div class="tree-header"><div><b>${cls.icon} Árvore de Skills — ${cls.name}</b><span>${state.specSkillPoints} ponto(s) disponíveis</span></div><small>Todos os upgrades custam exatamente 1 ponto.</small></div><h3>⚔️ Upgrades das Skills</h3><div class="skill-tree" id="spec-skill-tree"></div><h3>🌀 Upgrades da Aura</h3><div class="skill-tree" id="spec-aura-tree"></div><div class="actions"><button id="reset-spec" class="action">Reembolsar upgrades (${countUpgrades(state.specUpgrades)})</button></div>`;
+    cls.skillNodes.forEach(n=>tree.querySelector('#spec-skill-tree').appendChild(nodeButton(n,'spec')));cls.auraNodes.forEach(n=>tree.querySelector('#spec-aura-tree').appendChild(nodeButton(n,'spec')));tree.querySelector('#reset-spec').onclick=()=>{const n=resetSpecUpgrades(state);log(`↩️ ${n} ponto(s) de especialização devolvido(s).`);renderAll();};
   }
-
-  function renderArena() {
-    const arena = document.getElementById('arena');
-    arena.innerHTML = '';
-    state.enemies.forEach(enemy => {
-      const el = document.createElement('div');
-      el.className = `enemy ${enemy.burning ? 'burning' : ''} ${enemy.markedUntil > performance.now() ? 'marked' : ''}`;
-      el.style.left = `${enemy.x}px`;
-      el.style.top = `${enemy.y}px`;
-      el.innerHTML = `<div class="enemy-hp"><i style="width:${Math.max(0, enemy.hp / enemy.maxHp * 100)}%"></i></div>`;
-      arena.appendChild(el);
-    });
-    document.getElementById('player').style.left = `${state.player.x}px`;
-    document.getElementById('player').style.top = `${state.player.y}px`;
-    document.getElementById('combat-log').innerHTML = state.logs.join('<br>');
-    renderAim();
+  function renderTalents(){const root=document.getElementById('panel-talents');root.innerHTML=`<h2>🌳 Árvore de Skills do Mago</h2><div class="sub">A árvore geral melhora o personagem independente da especialização.</div><div class="tree-header"><div><b>🔮 Pontos de Mago: ${state.mageSkillPoints}</b><span>${countUpgrades(state.mageUpgrades)} upgrade(s)</span></div><small>Cada upgrade custa 1 ponto.</small></div><div class="mage-tree"></div><div class="actions"><button id="reset-mage" class="action">Reembolsar upgrades (${countUpgrades(state.mageUpgrades)})</button></div>`;const tree=root.querySelector('.mage-tree');mageSkillTree.forEach(n=>tree.appendChild(nodeButton(n,'mage')));root.querySelector('#reset-mage').onclick=()=>{const n=resetMageUpgrades(state);log(`↩️ ${n} ponto(s) de Mago devolvido(s).`);renderAll();};}
+  function slotCard(index){const isAura=index===2,id=isAura?state.loadout.aura:state.loadout.skills[index];const obj=isAura?(id?auras[id]:null):(id?skills[id]:null);return `<div class="loadout-slot ${isAura&&state.auraActive?'active':''}"><div class="slot-label">SLOT ${index+1} — ${isAura?'AURA':'SKILL'}</div><strong>${obj?obj.name:'Vazio'}</strong><small>${obj?obj.description||'':`Selecione ${isAura?'uma Aura':'uma skill'} abaixo.`}</small><div class="slot-action">${obj?`<button data-clear="${index}">Remover</button>`:''}</div></div>`;}
+  function renderSkills(){
+    const root=document.getElementById('panel-skills');const d=getDerivedStats(state);root.innerHTML=`<h2>✨ Loadout de Combate</h2><div class="sub">Cada personagem usa <b>2 skills da sua especialização + 1 Aura</b>. As skills saem na direção do cursor.</div>${state.selectedClass?`<div class="loadout-grid">${slotCard(0)}${slotCard(1)}${slotCard(2)}</div><h3>⚔️ Escolha suas 2 Skills</h3><div id="skill-options" class="option-grid"></div><h3>🌀 Escolha 1 Aura</h3><div id="aura-options" class="option-grid"></div><div class="cursor-info">🎯 Cursor: ${Math.round(state.mouse.x)} × ${Math.round(state.mouse.y)} · Crítico ${Math.round(d.critChance*100)}%</div>`:`<div class="empty-branch">Escolha uma especialização primeiro. Os três slots serão: Skill 1, Skill 2 e Aura.</div>`}<h3>✨ Ataque Básico</h3><div class="skill-card"><div class="skill-header"><b>${skills.basic.name}</b><span>Espaço</span></div><div class="small">${Math.round(getSkillStats(state,skills.basic).damage)} dano</div><p>Não ocupa um dos 3 slots.</p></div>`;
+    if(!state.selectedClass)return;
+    const cls=classes[state.selectedClass],skillOptions=root.querySelector('#skill-options'),auraOptions=root.querySelector('#aura-options');
+    cls.skills.forEach(id=>{const s=skills[id],b=document.createElement('button');b.className=`option-button ${state.loadout.skills.includes(id)?'chosen':''}`;b.innerHTML=`<b>${s.name}</b><span>${s.description??''}</span><em>${state.loadout.skills[0]===id?'Slot 1':state.loadout.skills[1]===id?'Slot 2':'Selecionar'}</em>`;b.onclick=()=>{const target=state.loadout.skills[0]?1:0;setSkillSlot(state,target,id);log(`✨ ${s.name} equipada.`);renderAll();};skillOptions.appendChild(b);});
+    cls.auras.forEach(id=>{const a=auras[id],b=document.createElement('button');b.className=`option-button ${state.loadout.aura===id?'chosen':''}`;b.innerHTML=`<b>${a.name}</b><span>${a.description}</span><em>${state.loadout.aura===id?'✓ Aura equipada':'Equipar no Slot 3'}</em>`;b.onclick=()=>{selectAura(state,id);log(`🌀 ${a.name} equipada.`);renderAll();};auraOptions.appendChild(b);});
+    root.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.clear);if(i<2)clearSkillSlot(state,i);else {state.loadout.aura=null;state.auraActive=false;saveGame(state);}renderAll();});
   }
-
-  function nodeButton(node, type) {
-    const current = type === 'mage' ? getMageLevel(state, node.id) : getSpecLevel(state, node.id);
-    const maxed = current >= node.maxLevel;
-    const button = document.createElement('button');
-    button.className = `node ${current ? 'learned' : ''} ${maxed ? 'maxed' : ''}`;
-    button.innerHTML = `<div class="node-title"><b>${node.name}</b><span> ${current}/${node.maxLevel}</span></div><small>${node.description}</small><div class="node-cost">${maxed ? 'MAX' : '▲ 1 ponto'}</div>`;
-    button.onclick = event => {
-      event.preventDefault();
-      const result = type === 'mage' ? buyMageUpgrade(state, node) : buySpecUpgrade(state, node);
-      log(result.ok ? `✅ ${result.message}` : `⚠️ ${result.message}`);
-      renderAll();
-    };
-    return button;
-  }
-
-  function renderClasses() {
-    const root = document.getElementById('panel-classes');
-    root.innerHTML = `<h2>👑 Especialização</h2><div class="sub">Você escolhe <b>uma única especialização</b> por personagem. Cada nível concede +1 ponto de especialização.</div><div id="class-grid" class="class-grid"></div><div id="spec-tree"></div>`;
-    const grid = root.querySelector('#class-grid');
-
-    Object.values(classes).forEach(cls => {
-      const button = document.createElement('button');
-      const chosen = state.selectedClass === cls.id;
-      const locked = Boolean(state.selectedClass) && !chosen;
-      button.className = `class-button ${chosen ? 'selected' : ''} ${locked ? 'locked-class' : ''}`;
-      button.disabled = locked;
-      button.innerHTML = `<b>${cls.icon} ${cls.name}</b><span>${cls.description}</span><em>${chosen ? '✓ Especialização ativa' : locked ? '🔒 Indisponível neste personagem' : 'Escolher'}</em>`;
-      button.onclick = () => {
-        const result = selectSpecialization(state, cls.id);
-        log(result.ok ? `👑 ${cls.name} escolhida. Os próximos pontos de especialização pertencem a esta árvore.` : `⚠️ ${result.message}`);
-        renderAll();
-      };
-      grid.appendChild(button);
-    });
-
-    const tree = root.querySelector('#spec-tree');
-    if (!state.selectedClass) {
-      tree.innerHTML = `<div class="branch empty-branch">Escolha uma classe acima para abrir sua árvore de habilidades.</div>`;
-      return;
-    }
-
-    const cls = classes[state.selectedClass];
-    tree.innerHTML = `<div class="tree-header"><div><b>${cls.icon} Árvore — ${cls.name}</b><span>${state.specSkillPoints} ponto(s) disponível(is)</span></div><small>Todos os upgrades abaixo custam exatamente 1 ponto.</small></div><div class="skill-tree"></div><div class="actions"><button id="reset-spec" class="action">Reembolsar upgrades (${countUpgrades(state.specUpgrades)})</button></div>`;
-    const gridTree = tree.querySelector('.skill-tree');
-    cls.skillNodes.forEach(node => gridTree.appendChild(nodeButton(node, 'spec')));
-    tree.querySelector('#reset-spec').onclick = () => { const n = resetSpecUpgrades(state); log(`↩️ ${n} ponto(s) de especialização devolvido(s).`); renderAll(); };
-  }
-
-  function renderTalents() {
-    const root = document.getElementById('panel-talents');
-    root.innerHTML = `<h2>🌳 Árvore de Skills do Mago</h2><div class="sub">Esta é a árvore geral. Cada upgrade custa <b>1 Ponto de Skill de Mago</b> e altera números reais das habilidades.</div><div class="tree-header"><div><b>🔮 Pontos de Mago: ${state.mageSkillPoints}</b></div><small>${countUpgrades(state.mageUpgrades)} upgrade(s) investido(s)</small></div><div class="mage-tree"></div><div class="actions"><button id="reset-mage" class="action">Reembolsar upgrades (${countUpgrades(state.mageUpgrades)})</button></div>`;
-    const tree = root.querySelector('.mage-tree');
-    mageSkillTree.forEach(node => tree.appendChild(nodeButton(node, 'mage')));
-    root.querySelector('#reset-mage').onclick = () => { const n = resetMageUpgrades(state); log(`↩️ ${n} ponto(s) de Mago devolvido(s).`); renderAll(); };
-  }
-
-  function countUpgrades(map) { return Object.values(map).reduce((sum, value) => sum + value, 0); }
-
-  function renderSkills() {
-    const root = document.getElementById('panel-skills');
-    const d = getDerivedStats(state);
-    root.innerHTML = `<h2>✨ Habilidades</h2><div class="sub">As skills agora são apontadas pelo <b>cursor do mouse</b>. A tecla apenas lança na direção do cursor.</div><div class="cursor-info">🎯 Cursor: ${Math.round(state.mouse.x)} × ${Math.round(state.mouse.y)} · Crítico ${Math.round(d.critChance * 100)}%</div><div id="skill-list"></div>`;
-    const list = root.querySelector('#skill-list');
-    [skills.basic, skills.fireball, skills.lightning, skills.void_lance, skills.meteor, skills.dash].forEach(skill => {
-      const stats = getSkillStats(state, skill);
-      const item = document.createElement('div');
-      item.className = 'skill-card';
-      item.innerHTML = `<div class="skill-header"><b>${skill.name}</b><span>${skill.key}</span></div><div class="small">${Math.round(stats.damage)} dano · ${Math.round(stats.cooldown)}ms · ${stats.manaCost} mana</div><p>${skillDescription(state, skill)}</p>`;
-      list.appendChild(item);
-    });
-  }
-
-  function renderFrame() { renderHud(); renderArena(); }
-  function renderAll() { renderHud(); renderArena(); renderClasses(); renderTalents(); renderSkills(); }
-  return { renderAll, renderFrame, log };
+  function renderFrame(){renderHud();renderArena();}
+  function renderAll(){renderHud();renderArena();renderClasses();renderTalents();renderSkills();}
+  return {renderAll,renderFrame,log};
 }

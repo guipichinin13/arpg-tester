@@ -1,8 +1,9 @@
 import { saveGame } from './save.js';
+import { classes } from '../data/classes.js';
 
 export function getMageLevel(state, id) { return state.mageUpgrades[id] ?? 0; }
 export function getSpecLevel(state, id) { return state.specUpgrades[id] ?? 0; }
-export function getUpgradeLevel(state, id) { return getMageLevel(state, id) || getSpecLevel(state, id); }
+export function countUpgrades(map) { return Object.values(map).reduce((sum, value) => sum + value, 0); }
 
 export function buyMageUpgrade(state, node) {
   const current = getMageLevel(state, node.id);
@@ -26,21 +27,61 @@ export function buySpecUpgrade(state, node) {
 }
 
 export function selectSpecialization(state, classId) {
-  if (state.selectedClass) return { ok: false, message: `Você já escolheu ${state.selectedClass}. A especialização é permanente neste personagem.` };
+  if (state.selectedClass) return { ok: false, message: 'A especialização é permanente neste personagem.' };
+  if (!classes[classId]) return { ok: false, message: 'Especialização inválida.' };
   state.selectedClass = classId;
+  state.loadout = { skills: [null, null], aura: null };
+  state.auraActive = false;
+  state.combat.charge = 0;
   saveGame(state);
-  return { ok: true, message: 'Especialização definida. Ela não pode ser trocada neste personagem.' };
+  return { ok: true, message: `${classes[classId].name} escolhida. Selecione 2 skills e 1 Aura.` };
+}
+
+export function setSkillSlot(state, slotIndex, skillId) {
+  if (!state.selectedClass || ![0, 1].includes(slotIndex)) return false;
+  const cls = classes[state.selectedClass];
+  if (!cls.skills.includes(skillId)) return false;
+  const otherIndex = slotIndex === 0 ? 1 : 0;
+  const otherSkill = state.loadout.skills[otherIndex];
+  const current = state.loadout.skills[slotIndex];
+  if (otherSkill === skillId) state.loadout.skills[otherIndex] = current ?? null;
+  state.loadout.skills[slotIndex] = skillId;
+  saveGame(state);
+  return true;
+}
+
+export function clearSkillSlot(state, slotIndex) {
+  if (![0,1].includes(slotIndex)) return false;
+  state.loadout.skills[slotIndex] = null;
+  saveGame(state);
+  return true;
+}
+
+export function selectAura(state, auraId) {
+  if (!state.selectedClass) return false;
+  const cls = classes[state.selectedClass];
+  if (!cls.auras.includes(auraId)) return false;
+  state.loadout.aura = auraId;
+  state.auraActive = true;
+  saveGame(state);
+  return true;
+}
+
+export function toggleAura(state) {
+  if (!state.loadout.aura) return false;
+  state.auraActive = !state.auraActive;
+  saveGame(state);
+  return true;
 }
 
 export function gainSkillPoints(state) {
   state.mageSkillPoints += 1;
-  state.specSkillPoints += 1;
+  if (state.selectedClass) state.specSkillPoints += 1;
   saveGame(state);
 }
 
 export function resetMageUpgrades(state) {
-  let refunded = 0;
-  for (const level of Object.values(state.mageUpgrades)) refunded += level;
+  const refunded = countUpgrades(state.mageUpgrades);
   state.mageUpgrades = {};
   state.mageSkillPoints += refunded;
   saveGame(state);
@@ -48,14 +89,13 @@ export function resetMageUpgrades(state) {
 }
 
 export function resetSpecUpgrades(state) {
-  let refunded = 0;
-  for (const level of Object.values(state.specUpgrades)) refunded += level;
+  const refunded = countUpgrades(state.specUpgrades);
   state.specUpgrades = {};
   state.specSkillPoints += refunded;
   saveGame(state);
   return refunded;
 }
 
-// Compatibilidade com sistemas de combate existentes.
+// Compatibilidade
 export function hasTalent(state, id) { return getMageLevel(state, id) > 0; }
 export function hasClassNode(state, id) { return getSpecLevel(state, id) > 0; }

@@ -1,14 +1,16 @@
-const SAVE_KEY = 'arpg_mago_save_v3';
+const SAVE_KEY = 'arpg_mago_save_v4';
 
 export function saveGame(state) {
   const payload = {
-    version: 3,
+    version: 4,
     player: { ...state.player },
     mageSkillPoints: state.mageSkillPoints,
     specSkillPoints: state.specSkillPoints,
     selectedClass: state.selectedClass,
     mageUpgrades: state.mageUpgrades,
     specUpgrades: state.specUpgrades,
+    loadout: { ...state.loadout, skills: [...state.loadout.skills] },
+    auraActive: state.auraActive,
     savedAt: Date.now(),
   };
   try {
@@ -26,7 +28,7 @@ export function loadGame() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    if (!data || data.version !== 3) return null;
+    if (!data || ![3, 4].includes(data.version)) return null;
     return data;
   } catch (error) {
     console.warn('Save inválido.', error);
@@ -46,6 +48,11 @@ export function applySavedGame(state, data) {
   state.selectedClass = data.selectedClass ?? null;
   state.mageUpgrades = data.mageUpgrades ?? {};
   state.specUpgrades = data.specUpgrades ?? {};
+  state.loadout = {
+    skills: Array.isArray(data.loadout?.skills) ? [data.loadout.skills[0] ?? null, data.loadout.skills[1] ?? null] : [null, null],
+    aura: data.loadout?.aura ?? null,
+  };
+  state.auraActive = Boolean(data.auraActive && state.loadout.aura);
   state.saveStatus = 'salvo';
   state.lastSavedAt = data.savedAt ?? Date.now();
   return true;
